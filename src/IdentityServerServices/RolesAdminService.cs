@@ -1,0 +1,123 @@
+using IdentityServerAspNetIdentity.Models;
+using IdentityServerServices.ViewModels;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace IdentityServerServices;
+
+public class RolesAdminService(
+    RoleManager<IdentityRole> roleManager,
+    UserManager<ApplicationUser> userManager) : IRolesAdminService
+{
+    private readonly RoleManager<IdentityRole> _roleManager = roleManager;
+    private readonly UserManager<ApplicationUser> _userManager = userManager;
+
+    public async Task<IReadOnlyList<RoleListItemDto>> GetRolesAsync(CancellationToken ct = default)
+    {
+        return await _roleManager.Roles
+            .AsNoTracking()
+            .OrderBy(r => r.Name)
+            .Select(r => new RoleListItemDto
+            {
+                Id = r.Id,
+                Name = r.Name ?? string.Empty
+            })
+            .ToListAsync(ct);
+    }
+
+    public async Task<RoleEditPageDataDto?> GetRoleForEditAsync(string roleId, CancellationToken ct = default)
+    {
+        var role = await _roleManager.FindByIdAsync(roleId);
+        if (role == null)
+            return null;
+
+        var roleName = role.Name ?? string.Empty;
+        var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name!);
+        var usersInRoleIds = usersInRole.Select(u => u.Id).ToHashSet();
+
+        var usersInRoleList = usersInRole
+            .OrderBy(u => u.UserName)
+            .Select(u => new RoleUserDto
+            {
+                Id = u.Id,
+                UserName = u.UserName ?? string.Empty,
+                Email = u.Email ?? string.Empty
+            })
+            .ToList();
+
+        var allUsers = await _userManager.Users.ToListAsync(ct);
+        var availableUsers = allUsers
+            .Where(u => !usersInRoleIds.Contains(u.Id))
+            .OrderBy(u => u.UserName)
+            .Select(u => new RoleUserDto
+            {
+                Id = u.Id,
+                UserName = u.UserName ?? string.Empty,
+                Email = u.Email ?? string.Empty
+            })
+            .ToList();
+
+        return new RoleEditPageDataDto
+        {
+            RoleName = roleName,
+            UsersInRole = usersInRoleList,
+            AvailableUsers = availableUsers
+        };
+    }
+
+    public async Task<AddUserToRoleResult> AddUserToRoleAsync(string roleId, string userId, CancellationToken ct = default)
+    {
+        var role = await _roleManager.FindByIdAsync(roleId);
+        if (role == null)
+            return new AddUserToRoleResult { Status = AddUserToRoleStatus.RoleNotFound };
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new AddUserToRoleResult { Status = AddUserToRoleStatus.UserNotFound };
+
+        var result = await _userManager.AddToRoleAsync(user, role.Name!);
+        if (!result.Succeeded)
+        {
+            return new AddUserToRoleResult
+            {
+                Status = AddUserToRoleStatus.Failed,
+                Errors = [.. result.Errors.Select(e => e.Description)]
+            };
+        }
+
+        return new AddUserToRoleResult
+        {
+            Status = AddUserToRoleStatus.Success,
+            UserName = user.UserName,
+            RoleName = role.Name
+        };
+    }
+
+    public async Task<RemoveUserFromRoleResult> RemoveUserFromRoleAsync(string roleId, string userId, CancellationToken ct = default)
+    {
+        var role = await _roleManager.FindByIdAsync(roleId);
+        if (role == null)
+            return new RemoveUserFromRoleResult { Status = RemoveUserFromRoleStatus.RoleNotFound };
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new RemoveUserFromRoleResult { Status = RemoveUserFromRoleStatus.UserNotFound };
+
+        var result = await _userManager.RemoveFromRoleAsync(user, role.Name!);
+        if (!result.Succeeded)
+        {
+            return new RemoveUserFromRoleResult
+            {
+                Status = RemoveUserFromRoleStatus.Failed,
+                Errors = [.. result.Errors.Select(e => e.Description)]
+            };
+        }
+
+        return new RemoveUserFromRoleResult
+        {
+            Status = RemoveUserFromRoleStatus.Success,
+            UserName = user.UserName,
+            RoleName = role.Name
+        };
+    }
+}

@@ -1,0 +1,77 @@
+@page "/admin/clients"
+@model IdentityServerAspNetIdentity.Pages.Admin.Clients.IndexModel
+@{
+    ViewData["Title"] = "Clients";
+}
+
+
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2><i class="fas fa-cog"></i> IdentityServer Clients</h2>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    @if (Model.Clients.Any())
+                    {
+                        
+                            <ck-responsive-table class="table table-striped" mobile-breakpoint="768px">
+                                <ck-responsive-thead>
+                                    <ck-responsive-col-head align="left">ID</ck-responsive-col-head>
+                                    <ck-responsive-col-head align="left">Client ID</ck-responsive-col-head>
+                                    <ck-responsive-col-head align="left">Client Name</ck-responsive-col-head>
+                                    <ck-responsive-col-head align="left">Description</ck-responsive-col-head>
+                                    <ck-responsive-col-head align="center" mobile-align="center">Enabled</ck-responsive-col-head>
+                                    <ck-responsive-col-head align="center" mobile-align="center" mobile-no-label="true">Actions</ck-responsive-col-head>
+                                </ck-responsive-thead>
+                                <ck-responsive-tbody>
+                                    @foreach (var client in Model.Clients)
+                                    {
+                                        <ck-responsive-row>
+                                            <ck-responsive-col>@client.Id</ck-responsive-col>
+                                            <ck-responsive-col>
+                                                <code>@client.ClientId</code>
+                                            </ck-responsive-col>
+                                            <ck-responsive-col>@client.ClientName</ck-responsive-col>
+                                            <ck-responsive-col>@(client.Description ?? "No description")</ck-responsive-col>
+                                            <ck-responsive-col class="align-center mobile-align-center">
+                                                @if (client.Enabled)
+                                                {
+                                                    <span class="badge bg-success">Enabled</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Disabled</span>
+                                                }
+                                            </ck-responsive-col>
+                                            <ck-responsive-col class="align-center mobile-align-center" mobile-direction="row" mobile-justify="center">
+                                                <a asp-page="/Admin/Clients/Edit" asp-route-id="@client.Id" class="button button-sm button-primary">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                            </ck-responsive-col>
+                                        </ck-responsive-row>
+                                    }
+                                </ck-responsive-tbody>
+                            </ck-responsive-table>
+                        
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No clients found.
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <a asp-page="/Admin/Index" class="button button-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

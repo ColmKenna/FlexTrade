@@ -1,0 +1,16 @@
+@* 
+    Reusable confirmation dialog.
+    Include once per layout/page: <partial name="_ConfirmModal" />
+    Trigger from JS: import { confirmAction } from '/js/confirmModal.js';
+*@
+
+<dialog id="confirm-modal" class="confirm-modal" aria-modal="true" aria-labelledby="confirm-modal-title">
+    <div class="confirm-modal__content">
+        <h2 id="confirm-modal-title" class="confirm-modal__title"></h2>
+        <p id="confirm-modal-message" class="confirm-modal__message"></p>
+        <div class="confirm-modal__actions">
+            <button type="button" id="confirm-modal-cancel" class="button button-secondary">Cancel</button>
+            <button type="button" id="confirm-modal-confirm" class="button button-danger">Confirm</button>
+        </div>
+    </div>
+</dialog>
