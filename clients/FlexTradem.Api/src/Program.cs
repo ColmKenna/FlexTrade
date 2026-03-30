@@ -1,6 +1,18 @@
+using FlexTradem.Api.Models;
+using FlexTradem.Api.Services;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Services.AddDbContext<FlexTradeDbContext>(options =>
+{
+        var connectionString = builder.Configuration.GetConnectionString("FlexTradeDb")
+                ?? "Server=localhost,1433;Database=FlexTrade;User Id=sa;Password=YourStrong!Passw0rd;MultipleActiveResultSets=true;Encrypt=False;TrustServerCertificate=True";
+
+        options.UseSqlServer(connectionString);
+});
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -21,6 +33,12 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+        var db = scope.ServiceProvider.GetRequiredService<FlexTradeDbContext>();
+        db.Database.EnsureCreated();
+}
+
 // Configure the HTTP request pipeline.
 
 app.UseHttpsRedirection();
@@ -29,13 +47,72 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 var listings = app.MapGroup("/listings");
-listings.MapGet("/",        () => Results.Ok("listings placeholder"))
+listings.MapGet("/", async (FlexTradeDbContext db) =>
+        {
+                var allListings = await db.Listings
+                        .OrderByDescending(x => x.CreatedUtc)
+                        .ToListAsync();
+
+                return Results.Ok(allListings);
+        })
         .RequireAuthorization("ListingsRead");
-listings.MapPost("/",       () => Results.Ok("create listing placeholder"))
+listings.MapPost("/", async (CreateListingRequest request, FlexTradeDbContext db) =>
+        {
+                if (string.IsNullOrWhiteSpace(request.Title))
+                {
+                        return Results.ValidationProblem(new Dictionary<string, string[]>
+                        {
+                                ["title"] = ["Title is required."]
+                        });
+                }
+
+                var listing = new Listing
+                {
+                        Title = request.Title.Trim(),
+                        CreatedUtc = DateTime.UtcNow
+                };
+
+                db.Listings.Add(listing);
+                await db.SaveChangesAsync();
+
+                return Results.Created($"/listings/{listing.Id}", listing);
+        })
         .RequireAuthorization("ListingsWrite");
-listings.MapPut("/{id}",    (int id) => Results.Ok($"update listing {id}"))
+listings.MapPut("/{id}", async (int id, CreateListingRequest request, FlexTradeDbContext db) =>
+        {
+                if (string.IsNullOrWhiteSpace(request.Title))
+                {
+                        return Results.ValidationProblem(new Dictionary<string, string[]>
+                        {
+                                ["title"] = ["Title is required."]
+                        });
+                }
+
+                var listing = await db.Listings.FindAsync(id);
+                if (listing is null)
+                {
+                        return Results.NotFound();
+                }
+
+                listing.Title = request.Title.Trim();
+                await db.SaveChangesAsync();
+
+                return Results.Ok(listing);
+        })
         .RequireAuthorization("ListingsWrite");
-listings.MapDelete("/{id}", (int id) => Results.Ok($"delete listing {id}"))
+listings.MapDelete("/{id}", async (int id, FlexTradeDbContext db) =>
+        {
+                var listing = await db.Listings.FindAsync(id);
+                if (listing is null)
+                {
+                        return Results.NotFound();
+                }
+
+                db.Listings.Remove(listing);
+                await db.SaveChangesAsync();
+
+                return Results.NoContent();
+        })
         .RequireAuthorization("ListingsWrite");
 
 var requests = app.MapGroup("/requests");
