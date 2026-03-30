@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using Duende.IdentityServer;
 using Duende.IdentityServer.Models;
 
@@ -11,37 +11,33 @@ public static class Config
         {
             new IdentityResources.OpenId(),
             new IdentityResources.Profile(),
-            new IdentityResource("color", new [] { "favorite_color" }),
-            new IdentityResource
-            {
-                Name = "employees",
-                UserClaims = { "canViewEmployees", "canAmendEmployee" },
-                DisplayName = "Employee resources",
-                Description = "Allow the client to manage employees",
-                Emphasize = true
-            },
-            new IdentityResource
-            {
-                Name = "products",
-                UserClaims = { "canViewProducts", "canAmendProduct" },
-                DisplayName = "Product resources",
-                Description = "Allow the client to manage products",
-                Emphasize = true
-            }
-        };
+         };
 
 
     public static IEnumerable<ApiScope> ApiScopes =>
         new List<ApiScope>
         {
-            new ApiScope("api1", "My API")
+            new ApiScope("flextrade.listings.read",   "Browse available listings"),
+            new ApiScope("flextrade.listings.write",  "Create and manage own listings"),
+            new ApiScope("flextrade.requests.read",   "View own borrow requests"),
+            new ApiScope("flextrade.requests.write",  "Submit and manage borrow requests"),
+            new ApiScope("flextrade.loans.read",      "View own loan history"),
+            new ApiScope("flextrade.loans.manage",    "Approve, reject, or close loans"),
+        };
+
+    public static IEnumerable<ApiResource> ApiResources =>
+        new List<ApiResource>
+        {
+            new ApiResource("flextrade-api", "FlexTradem API")
             {
-                UserClaims = new List<string>
+                Scopes =
                 {
-                    "canViewEmployees",
-                    "canAmendEmployee",
-                    "canViewProducts",
-                    "canAmendProduct"
+                    "flextrade.listings.read",
+                    "flextrade.listings.write",
+                    "flextrade.requests.read",
+                    "flextrade.requests.write",
+                    "flextrade.loans.read",
+                    "flextrade.loans.manage"
                 }
             }
         };
@@ -49,70 +45,26 @@ public static class Config
     public static IEnumerable<Client> Clients =>
         new List<Client>
         {
-            // machine to machine client
             new Client
             {
-                ClientId = "client",
-                ClientSecrets = { new Secret("secret".Sha256()) },
-
-                AllowedGrantTypes = GrantTypes.ClientCredentials,
-                // scopes that client has access to
-                AllowedScopes = { "api1" }
-            },
-                
-            // interactive ASP.NET Core Web App
-            new Client
-            {
-                ClientId = "web",
-                ClientSecrets = { new Secret("secret".Sha256()) },
-
+                ClientId = "flextrade-web",
+                ClientSecrets = { new Secret("change-in-production".Sha256()) },
                 AllowedGrantTypes = GrantTypes.Code,
-                    
-                // where to redirect to after login
-                RedirectUris = { "https://localhost:5002/signin-oidc" },
-
-                // where to redirect to after logout
-                PostLogoutRedirectUris = { "https://localhost:5002/signout-callback-oidc" },
-    
-                AllowOfflineAccess = true,
-
-                AllowedScopes = new List<string>
+                RedirectUris           = { "https://localhost:7236/signin-oidc" },
+                PostLogoutRedirectUris = { "https://localhost:7236/signout-callback-oidc" },
+                AllowedScopes =
                 {
                     IdentityServerConstants.StandardScopes.OpenId,
                     IdentityServerConstants.StandardScopes.Profile,
-                    "api1",
-                    "color",
-                    "employees",
-                    "products"
+                    "flextrade.listings.read",
+                    "flextrade.listings.write",
+                    "flextrade.requests.read",
+                    "flextrade.requests.write",
+                    "flextrade.loans.read",
+                    "flextrade.loans.manage"
                 },
-                AlwaysIncludeUserClaimsInIdToken = true
-            },
-
-            // Products Razor Pages App
-            new Client
-            {
-                ClientId = "products",
-                ClientName = "Products App",
-                ClientSecrets = { new Secret("productsrazor".Sha256()) },
-
-                AllowedGrantTypes = GrantTypes.Code,
-                RequirePkce = true,
-
-                RedirectUris = { "https://localhost:5003/signin-oidc" },
-                PostLogoutRedirectUris = { "https://localhost:5003/signout-callback-oidc" },
-
-                AllowOfflineAccess = true,
-
-                AllowedScopes = new List<string>
-                {
-                    IdentityServerConstants.StandardScopes.OpenId,
-                    IdentityServerConstants.StandardScopes.Profile,
-                    "api1",
-                    "products"
-                },
-                AlwaysIncludeUserClaimsInIdToken = true
+                AllowOfflineAccess = true
             }
         };
-
 
 }

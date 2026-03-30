@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Duende.IdentityServer.EntityFramework.DbContexts;
+using Duende.IdentityServer.EntityFramework.Mappers;
 using IdentityModel;
 using IdentityServer.EF.DataAccess.DataMigrations;
 using IdentityServerAspNetIdentity.Models;
@@ -14,9 +16,57 @@ public class SeedData
     {
         using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
 
+        var persistedGrantDbContext = scope.ServiceProvider.GetRequiredService<PersistedGrantDbContext>();
+        var configurationDbContext = scope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        // All contexts share the same database connection, so deleting one deletes all.
+        // We delete once at the start to ensure a clean slate.
         await context.Database.EnsureDeletedAsync();
+
+        await persistedGrantDbContext.Database.MigrateAsync();
+        await configurationDbContext.Database.MigrateAsync();
         await context.Database.MigrateAsync();
+
+        if (!await configurationDbContext.Clients.AnyAsync())
+        {
+            foreach (var client in Config.Clients)
+            {
+                configurationDbContext.Clients.Add(client.ToEntity());
+            }
+            await configurationDbContext.SaveChangesAsync();
+            Log.Debug("Clients seeded");
+        }
+
+        if (!await configurationDbContext.IdentityResources.AnyAsync())
+        {
+            foreach (var resource in Config.IdentityResources)
+            {
+                configurationDbContext.IdentityResources.Add(resource.ToEntity());
+            }
+            await configurationDbContext.SaveChangesAsync();
+            Log.Debug("IdentityResources seeded");
+        }
+
+        if (!await configurationDbContext.ApiScopes.AnyAsync())
+        {
+            foreach (var scopeItem in Config.ApiScopes)
+            {
+                configurationDbContext.ApiScopes.Add(scopeItem.ToEntity());
+            }
+            await configurationDbContext.SaveChangesAsync();
+            Log.Debug("ApiScopes seeded");
+        }
+
+        if (!await configurationDbContext.ApiResources.AnyAsync())
+        {
+            foreach (var resource in Config.ApiResources)
+            {
+                configurationDbContext.ApiResources.Add(resource.ToEntity());
+            }
+            await configurationDbContext.SaveChangesAsync();
+            Log.Debug("ApiResources seeded");
+        }
 
         context.Roles.Add(new IdentityRole { Name = "ADMIN", NormalizedName = "ADMIN" });
         context.Roles.Add(new IdentityRole { Name = "USER", NormalizedName = "USER" });

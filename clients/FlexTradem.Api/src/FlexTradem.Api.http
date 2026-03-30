@@ -1,0 +1,6 @@
+@FlexTradem.Api_HostAddress = http://localhost:5001
+
+GET {{FlexTradem.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
